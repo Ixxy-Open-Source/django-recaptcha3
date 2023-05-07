@@ -24,7 +24,7 @@ class ReCaptchaField(forms.CharField):
         if 'widget' not in kwargs:
             kwargs['widget'] = ReCaptchaHiddenInput()
 
-        super(ReCaptchaField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def clean(self, values):
         # Disable the check (and allow empty field value) if we run in a unittest
@@ -34,11 +34,15 @@ class ReCaptchaField(forms.CharField):
             except:
                 return {}
 
-        response_token = super(ReCaptchaField, self).clean(values)
+        response_token = super().clean(values)
+        if response_token and response_token.startswith("['"):
+            # The response_token is "['{actual_response_token}']"
+            response_token = response_token[2:-2]
 
         try:
+            recaptcha_domain = getattr(settings, 'RECAPTCHA_DOMAIN', 'www.recaptcha.net')
             r = requests.post(
-                'https://www.google.com/recaptcha/api/siteverify',
+                'https://{}/recaptcha/api/siteverify'.format(recaptcha_domain),
                 {
                     'secret': self._private_key,
                     'response': response_token
